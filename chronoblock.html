@@ -1,0 +1,1636 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChronoBlock - Advanced Time System</title>
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.js"></script>
+  <style>
+    :root {
+      --primary: #0f0f1e;
+      --secondary: #1a1a2e;
+      --accent: #00ffff;
+      --accent2: #ff00ff;
+      --text: #e0e0ff;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background:
+        radial-gradient(circle at 20% 80%, rgba(0, 255, 255, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 0, 255, 0.1) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem 2rem;
+      background: rgba(15, 15, 30, 0.8);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .logo h1 {
+      font-size: 1.8rem;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      font-weight: 700;
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: conic-gradient(from 0deg, var(--accent), var(--accent2), var(--accent));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: spin 10s linear infinite;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .auth-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(0, 255, 255, 0.1);
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      border: 1px solid var(--accent);
+    }
+
+    .auth-dot {
+      width: 10px;
+      height: 10px;
+      background: #00ff00;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.5;
+      }
+
+      100% {
+        opacity: 1;
+      }
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+      padding: 2rem;
+      align-items: start;
+    }
+
+    .card {
+      background: rgba(26, 26, 46, 0.7);
+      border-radius: 15px;
+      padding: 1.5rem;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(0, 255, 255, 0.1);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      transition: transform 0.3s, box-shadow 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+    }
+
+    .card h2 {
+      margin-bottom: 1rem;
+      font-size: 1.3rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--accent);
+    }
+
+    .card h2 i {
+      font-size: 1.2rem;
+    }
+
+    .time-display {
+      font-size: 2.5rem;
+      font-weight: 300;
+      text-align: center;
+      margin: 1rem 0;
+      font-family: 'Courier New', monospace;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .timezone {
+      font-size: 0.9rem;
+      opacity: 0.8;
+      margin-bottom: 0.5rem;
+    }
+
+    .blockchain-hash {
+      font-family: 'Courier New', monospace;
+      font-size: 0.7rem;
+      word-break: break-all;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 0.5rem;
+      border-radius: 5px;
+      margin-top: 1rem;
+    }
+
+    .controls {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    button {
+      background: rgba(0, 255, 255, 0.1);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      padding: 0.5rem 1rem;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.3s;
+      flex: 1;
+    }
+
+    button:hover {
+      background: rgba(0, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    input,
+    select {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(0, 255, 255, 0.3);
+      color: var(--text);
+      padding: 0.5rem;
+      border-radius: 5px;
+      width: 100%;
+      margin-bottom: 0.5rem;
+    }
+
+    .holiday-list,
+    .timezone-list {
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .holiday-item,
+    .timezone-item {
+      padding: 0.7rem;
+      margin-bottom: 0.5rem;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 5px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .countdown {
+      font-weight: bold;
+      color: var(--accent2);
+    }
+
+    .alarm-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.7rem;
+      margin-bottom: 0.5rem;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 5px;
+    }
+
+    .alarm-active {
+      color: #00ff00;
+    }
+
+    .alarm-inactive {
+      color: #ff5555;
+    }
+
+    .timer-display {
+      font-size: 2rem;
+      text-align: center;
+      margin: 1rem 0;
+      font-family: 'Courier New', monospace;
+    }
+
+    .xr-section {
+      margin-top: 2rem;
+      padding: 2rem;
+      background: rgba(15, 15, 30, 0.8);
+      border-radius: 15px;
+      text-align: center;
+    }
+
+    .xr-button {
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      color: var(--primary);
+      border: none;
+      padding: 1rem 2rem;
+      border-radius: 30px;
+      font-weight: bold;
+      cursor: pointer;
+      margin: 1rem 0;
+      transition: transform 0.3s;
+    }
+
+    .xr-button:hover {
+      transform: scale(1.05);
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      margin-top: 2rem;
+      border-top: 1px solid rgba(0, 255, 255, 0.2);
+      font-size: 0.9rem;
+      opacity: 0.7;
+    }
+
+    /* Clock Type Selector */
+    .clock-type-selector {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .clock-type-btn {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(0, 255, 255, 0.3);
+      color: var(--text);
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 0.8rem;
+    }
+
+    .clock-type-btn.active {
+      background: rgba(0, 255, 255, 0.2);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Analog Clock */
+    .analog-clock {
+      width: 200px;
+      height: 200px;
+      margin: 0 auto;
+      position: relative;
+      border: 3px solid var(--accent);
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .analog-center {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: var(--accent);
+      border-radius: 50%;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+    }
+
+    .analog-hour {
+      position: absolute;
+      width: 4px;
+      height: 50px;
+      background: var(--accent);
+      top: 50px;
+      left: 98px;
+      transform-origin: bottom center;
+      border-radius: 2px;
+    }
+
+    .analog-minute {
+      position: absolute;
+      width: 3px;
+      height: 70px;
+      background: var(--accent2);
+      top: 30px;
+      left: 98.5px;
+      transform-origin: bottom center;
+      border-radius: 2px;
+    }
+
+    .analog-second {
+      position: absolute;
+      width: 2px;
+      height: 80px;
+      background: #ffffff;
+      top: 20px;
+      left: 99px;
+      transform-origin: bottom center;
+      border-radius: 1px;
+    }
+
+    .analog-numbers {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      font-size: 1.2rem;
+      color: var(--text);
+    }
+
+    .analog-number {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      text-align: center;
+      line-height: 30px;
+    }
+
+    /* Binary Clock */
+    .binary-clock {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin: 1rem 0;
+    }
+
+    .binary-column {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    .binary-cell {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: rgba(0, 255, 255, 0.1);
+      border: 1px solid var(--accent);
+      transition: all 0.3s;
+    }
+
+    .binary-cell.active {
+      background: var(--accent);
+      box-shadow: 0 0 10px var(--accent);
+    }
+
+    .binary-labels {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+
+    .binary-label {
+      width: 30px;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--accent2);
+    }
+
+    /* Hexadecimal Clock */
+    .hex-clock {
+      font-size: 2rem;
+      text-align: center;
+      margin: 1rem 0;
+      font-family: 'Courier New', monospace;
+      color: var(--accent);
+    }
+
+    /* Roman Numeral Clock */
+    .roman-clock {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin: 1rem 0;
+      font-size: 2rem;
+      color: var(--accent2);
+    }
+
+    .roman-segment {
+      padding: 0.5rem;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 5px;
+      min-width: 60px;
+      text-align: center;
+    }
+
+    /* Word Clock */
+    .word-clock {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.3rem;
+      margin: 1rem 0;
+    }
+
+    .word-cell {
+      padding: 0.5rem;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 3px;
+      font-size: 0.8rem;
+      transition: all 0.3s;
+    }
+
+    .word-cell.active {
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: bold;
+    }
+
+    /* Flip Clock */
+    .flip-clock {
+      display: flex;
+      justify-content: center;
+      gap: 0.3rem;
+      margin: 1rem 0;
+    }
+
+    .flip-unit {
+      perspective: 200px;
+    }
+
+    .flip-card {
+      width: 40px;
+      height: 60px;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.5s;
+    }
+
+    .flip-card-front,
+    .flip-card-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 5px;
+      font-size: 1.5rem;
+      color: var(--accent);
+    }
+
+    .flip-card-back {
+      transform: rotateX(180deg);
+    }
+
+    .flip-separator {
+      display: flex;
+      align-items: center;
+      font-size: 1.5rem;
+      color: var(--accent2);
+    }
+
+    /* Timestamp Hashing */
+    .timestamp-hash {
+      font-family: 'Courier New', monospace;
+      font-size: 0.7rem;
+      word-break: break-all;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 0.5rem;
+      border-radius: 5px;
+      margin-top: 0.5rem;
+    }
+
+    .hash-chain {
+      max-height: 150px;
+      overflow-y: auto;
+      margin-top: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+
+      .time-display {
+        font-size: 2rem;
+      }
+
+      header {
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .analog-clock {
+        width: 150px;
+        height: 150px;
+      }
+
+      .analog-hour {
+        height: 35px;
+        top: 40px;
+        left: 73px;
+      }
+
+      .analog-minute {
+        height: 50px;
+        top: 25px;
+        left: 73.5px;
+      }
+
+      .analog-second {
+        height: 55px;
+        top: 20px;
+        left: 74px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="logo">
+      <div class="logo-icon"></div>
+      <h1>ChronoBlock</h1>
+    </div>
+    <div class="auth-status">
+      <div class="auth-dot"></div>
+      <span>Time Source: Authenticated</span>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- Primary Time Display -->
+    <div class="card">
+      <h2>🕒 Primary Time</h2>
+      <div class="clock-type-selector">
+        <button class="clock-type-btn active" data-type="digital">Digital</button>
+        <button class="clock-type-btn" data-type="analog">Analog</button>
+        <button class="clock-type-btn" data-type="binary">Binary</button>
+        <button class="clock-type-btn" data-type="hex">Hexadecimal</button>
+        <button class="clock-type-btn" data-type="roman">Roman</button>
+        <button class="clock-type-btn" data-type="word">Word</button>
+        <button class="clock-type-btn" data-type="flip">Flip</button>
+      </div>
+      <div class="timezone">Local Time (CDT)</div>
+
+      <!-- Digital Clock (Default) -->
+      <div id="digital-clock" class="time-display">14:13:22</div>
+      <div id="primary-date" class="timezone">Wed Oct 15 2025</div>
+
+      <!-- Analog Clock -->
+      <div id="analog-clock" class="analog-clock" style="display: none;">
+        <div class="analog-center"></div>
+        <div class="analog-hour"></div>
+        <div class="analog-minute"></div>
+        <div class="analog-second"></div>
+        <div class="analog-numbers">
+          <div class="analog-number" style="top: 10px; left: 85px;">12</div>
+          <div class="analog-number" style="top: 85px; right: 10px;">3</div>
+          <div class="analog-number" style="bottom: 10px; left: 85px;">6</div>
+          <div class="analog-number" style="top: 85px; left: 10px;">9</div>
+        </div>
+      </div>
+
+      <!-- Binary Clock -->
+      <div id="binary-clock" class="binary-clock" style="display: none;">
+        <!-- Binary digits will be generated by JavaScript -->
+      </div>
+
+      <!-- Hexadecimal Clock -->
+      <div id="hex-clock" class="hex-clock" style="display: none;">8D:0D:16</div>
+
+      <!-- Roman Numeral Clock -->
+      <div id="roman-clock" class="roman-clock" style="display: none;">
+        <div class="roman-segment" id="roman-hours">XIV</div>
+        <div class="roman-segment">:</div>
+        <div class="roman-segment" id="roman-minutes">XIII</div>
+        <div class="roman-segment">:</div>
+        <div class="roman-segment" id="roman-seconds">XXII</div>
+      </div>
+
+      <!-- Word Clock -->
+      <div id="word-clock" class="word-clock" style="display: none;">
+        <!-- Word clock grid will be generated by JavaScript -->
+      </div>
+
+      <!-- Flip Clock -->
+      <div id="flip-clock" class="flip-clock" style="display: none;">
+        <!-- Flip clock digits will be generated by JavaScript -->
+      </div>
+
+      <div class="blockchain-hash" id="primary-hash">Hash: Loading...</div>
+    </div>
+
+    <!-- International Times -->
+    <div class="card">
+      <h2>🌍 International Times</h2>
+      <div id="timezone-list" class="timezone-list">
+        <!-- Timezone items will be added here -->
+      </div>
+    </div>
+
+    <!-- Alternative Time Formats -->
+    <div class="card">
+      <h2>⏱️ Alternative Formats</h2>
+      <div class="timezone">Unix Timestamp</div>
+      <div id="unix-time" class="time-display">1760555602</div>
+
+      <div class="timezone">ISO 8601</div>
+      <div id="iso-time" class="timezone">2025-10-15T14:13:22-05:00</div>
+
+      <div class="timezone">Military Time</div>
+      <div id="military-time" class="time-display">141322</div>
+    </div>
+
+    <!-- Alarm Clock -->
+    <div class="card">
+      <h2>⏰ Alarm Clock</h2>
+      <div class="controls">
+        <input type="time" id="alarm-time">
+        <button id="set-alarm">Set Alarm</button>
+      </div>
+      <div id="alarm-list" class="holiday-list">
+        <!-- Alarm items will be added here -->
+      </div>
+    </div>
+
+    <!-- Timer -->
+    <div class="card">
+      <h2>⏱️ Timer</h2>
+      <div class="controls">
+        <input type="number" id="timer-minutes" placeholder="Minutes" min="0">
+        <input type="number" id="timer-seconds" placeholder="Seconds" min="0" max="59">
+      </div>
+      <div id="timer-display" class="timer-display">00:00</div>
+      <div class="controls">
+        <button id="start-timer">Start</button>
+        <button id="pause-timer">Pause</button>
+        <button id="reset-timer">Reset</button>
+      </div>
+    </div>
+
+    <!-- Holidays & Countdowns -->
+    <div class="card">
+      <h2>🎄 Holidays & Countdowns</h2>
+      <div id="holiday-list" class="holiday-list">
+        <!-- Holiday items will be added here -->
+      </div>
+    </div>
+
+    <!-- Blockchain Hashes -->
+    <div class="card">
+      <h2>🔗 Time Blockchain</h2>
+      <div class="blockchain-hash" id="hash-sha256">SHA-256: Loading...</div>
+      <div class="blockchain-hash" id="hash-sha3">SHA3-256: Loading...</div>
+      <div class="blockchain-hash" id="hash-md5">MD5: Loading...</div>
+      <div class="blockchain-hash" id="hash-ripemd">RIPEMD-160: Loading...</div>
+    </div>
+
+    <!-- Timestamp Hashing System -->
+    <div class="card">
+      <h2>⏳ Timestamp Hashing</h2>
+      <div class="timestamp-hash" id="current-timestamp">Current: Loading...</div>
+      <div class="timestamp-hash" id="previous-timestamp">Previous: Loading...</div>
+      <div class="hash-chain" id="hash-chain">
+        <!-- Hash chain will be added here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- WebXR Section -->
+  <div class="xr-section">
+    <h2>Immersive Time Experience</h2>
+    <p>Enter a virtual environment to experience time in a new dimension</p>
+    <button class="xr-button" id="enter-xr">Enter WebXR Environment</button>
+
+    <!-- A-Frame Scene -->
+    <div id="xr-scene" style="display: none;">
+      <a-scene embedded background="color: #0f0f1e">
+        <!-- Time Sphere -->
+        <a-entity id="time-sphere" geometry="primitive: sphere; radius: 1.5" position="0 1.5 -3" material="shader: gradient; color1: #00ffff; color2: #ff00ff">
+          <a-animation attribute="rotation" dur="10000" fill="forwards" to="0 360 0" repeat="indefinite"></a-animation>
+        </a-entity>
+
+        <!-- Clock Digits -->
+        <a-text id="xr-time" value="14:13:22" position="0 2.5 -3" align="center" color="#00ffff" scale="2 2 2"></a-text>
+
+        <!-- Blockchain Nodes -->
+        <a-entity id="blockchain-nodes">
+          <!-- Nodes will be added dynamically -->
+        </a-entity>
+
+        <!-- Camera -->
+        <a-camera position="0 1.6 0">
+          <a-cursor></a-cursor>
+        </a-camera>
+      </a-scene>
+    </div>
+  </div>
+
+  <footer>
+    <p>ChronoBlock &copy; 2025 | Time Source Authentication & Multi-Hash Blockchain</p>
+  </footer>
+
+  <script>
+    // Time and Blockchain Management
+    class ChronoBlock {
+      constructor() {
+        this.timeBlocks = [];
+        this.alarms = [];
+        this.timers = [];
+        this.holidays = [{
+            name: "New Year's Day",
+            month: 0,
+            day: 1
+          },
+          {
+            name: "Valentine's Day",
+            month: 1,
+            day: 14
+          },
+          {
+            name: "St. Patrick's Day",
+            month: 2,
+            day: 17
+          },
+          {
+            name: "Easter",
+            month: 3,
+            day: calculateEaster(new Date().getFullYear())
+          },
+          {
+            name: "Independence Day",
+            month: 6,
+            day: 4
+          },
+          {
+            name: "Halloween",
+            month: 9,
+            day: 31
+          },
+          {
+            name: "Thanksgiving",
+            month: 10,
+            day: getThanksgivingDate(new Date().getFullYear())
+          },
+          {
+            name: "Christmas",
+            month: 11,
+            day: 25
+          }
+        ];
+        this.currentTimer = null;
+        this.timerPaused = true;
+        this.timerValue = 0;
+        this.currentClockType = 'digital';
+        this.timezones = [{
+            name: "London",
+            offset: 0,
+            code: "GMT"
+          },
+          {
+            name: "Tokyo",
+            offset: 9,
+            code: "JST"
+          },
+          {
+            name: "Sydney",
+            offset: 10,
+            code: "AEST"
+          },
+          {
+            name: "New York",
+            offset: -5,
+            code: "EST"
+          },
+          {
+            name: "Los Angeles",
+            offset: -8,
+            code: "PST"
+          },
+          {
+            name: "Paris",
+            offset: 1,
+            code: "CET"
+          },
+          {
+            name: "Moscow",
+            offset: 3,
+            code: "MSK"
+          },
+          {
+            name: "Dubai",
+            offset: 4,
+            code: "GST"
+          },
+          {
+            name: "Mumbai",
+            offset: 5.5,
+            code: "IST"
+          },
+          {
+            name: "Hong Kong",
+            offset: 8,
+            code: "HKT"
+          },
+          {
+            name: "São Paulo",
+            offset: -3,
+            code: "BRT"
+          },
+          {
+            name: "Cairo",
+            offset: 2,
+            code: "EET"
+          }
+        ];
+        // Timestamp hashing system
+        this.timestampHashes = [];
+        this.maxHashChainLength = 10;
+        // Word clock configuration
+        this.wordClockGrid = [
+          ['I', 'T', 'L', 'I', 'S', 'A', 'S', 'A', 'M', 'P', 'M'],
+          ['A', 'C', 'Q', 'U', 'A', 'R', 'T', 'E', 'R', 'D', 'C'],
+          ['T', 'W', 'E', 'N', 'T', 'Y', 'F', 'I', 'V', 'E', 'X'],
+          ['H', 'A', 'L', 'F', 'S', 'T', 'E', 'N', 'F', 'T', 'O'],
+          ['P', 'A', 'S', 'T', 'E', 'R', 'U', 'N', 'I', 'N', 'E'],
+          ['O', 'N', 'E', 'S', 'I', 'X', 'T', 'H', 'R', 'E', 'E'],
+          ['F', 'O', 'U', 'R', 'F', 'I', 'V', 'E', 'T', 'W', 'O'],
+          ['E', 'I', 'G', 'H', 'T', 'E', 'L', 'E', 'V', 'E', 'N'],
+          ['S', 'E', 'V', 'E', 'N', 'T', 'W', 'E', 'L', 'V', 'E'],
+          ['T', 'E', 'N', 'S', 'E', 'O', 'C', 'L', 'O', 'C', 'K']
+        ];
+        this.init();
+      }
+      init() {
+        this.setupClockTypeSelector();
+        this.setupTimezoneList();
+        this.updateAllDisplays();
+        setInterval(() => {
+          this.updateAllDisplays();
+        }, 1000);
+        this.setupEventListeners();
+        this.generateInitialBlock();
+        this.setupWordClock();
+        this.setupBinaryClock();
+        this.setupFlipClock();
+        this.initializeTimestampHashing();
+      }
+      setupClockTypeSelector() {
+        const buttons = document.querySelectorAll('.clock-type-btn');
+        buttons.forEach(button => {
+          button.addEventListener('click', () => {
+            // Remove active class from all buttons
+            buttons.forEach(btn => btn.classList.remove('active'));
+            // Add active class to clicked button
+            button.classList.add('active');
+            // Switch clock type
+            this.switchClockType(button.getAttribute('data-type'));
+          });
+        });
+      }
+      switchClockType(type) {
+        // Hide all clock displays
+        document.getElementById('digital-clock').style.display = 'none';
+        document.getElementById('analog-clock').style.display = 'none';
+        document.getElementById('binary-clock').style.display = 'none';
+        document.getElementById('hex-clock').style.display = 'none';
+        document.getElementById('roman-clock').style.display = 'none';
+        document.getElementById('word-clock').style.display = 'none';
+        document.getElementById('flip-clock').style.display = 'none';
+        // Show selected clock
+        switch (type) {
+          case 'digital':
+            document.getElementById('digital-clock').style.display = 'block';
+            break;
+          case 'analog':
+            document.getElementById('analog-clock').style.display = 'block';
+            break;
+          case 'binary':
+            document.getElementById('binary-clock').style.display = 'block';
+            break;
+          case 'hex':
+            document.getElementById('hex-clock').style.display = 'block';
+            break;
+          case 'roman':
+            document.getElementById('roman-clock').style.display = 'block';
+            break;
+          case 'word':
+            document.getElementById('word-clock').style.display = 'block';
+            break;
+          case 'flip':
+            document.getElementById('flip-clock').style.display = 'block';
+            break;
+        }
+        this.currentClockType = type;
+      }
+      setupTimezoneList() {
+        const timezoneList = document.getElementById('timezone-list');
+        timezoneList.innerHTML = '';
+        this.timezones.forEach(tz => {
+          const timezoneItem = document.createElement('div');
+          timezoneItem.className = 'timezone-item';
+          const timeDisplay = document.createElement('div');
+          timeDisplay.className = 'time-display';
+          timeDisplay.id = `time-${tz.name.replace(/\s+/g, '-').toLowerCase()}`;
+          timeDisplay.textContent = '00:00:00';
+          const timezoneInfo = document.createElement('div');
+          timezoneInfo.className = 'timezone';
+          timezoneInfo.textContent = `${tz.name} (${tz.code})`;
+          timezoneItem.appendChild(timezoneInfo);
+          timezoneItem.appendChild(timeDisplay);
+          timezoneList.appendChild(timezoneItem);
+        });
+      }
+      updateAllDisplays() {
+        const now = new Date();
+        // Update primary time based on current clock type
+        this.updatePrimaryClock(now);
+        // Update international times
+        this.updateTimezoneTimes(now);
+        // Update alternative formats
+        document.getElementById('unix-time').textContent = Math.floor(now.getTime() / 1000);
+        document.getElementById('iso-time').textContent = now.toISOString();
+        document.getElementById('military-time').textContent =
+          now.getHours().toString().padStart(2, '0') +
+          now.getMinutes().toString().padStart(2, '0') +
+          now.getSeconds().toString().padStart(2, '0');
+        // Update blockchain hashes
+        this.updateBlockchainHashes(now);
+        // Update timestamp hashing
+        this.updateTimestampHashing(now);
+        // Update XR time if visible
+        if (document.getElementById('xr-scene').style.display !== 'none') {
+          document.querySelector('#xr-time').setAttribute('value', this.formatTime(now));
+        }
+        // Check alarms
+        this.checkAlarms(now);
+        // Update holiday countdowns
+        this.updateHolidayCountdowns(now);
+        // Update timer if running
+        if (!this.timerPaused && this.currentTimer) {
+          this.updateTimer();
+        }
+      }
+      updatePrimaryClock(now) {
+        const hours = now.getHours();
+        const minutes = now.getMinutes();
+        const seconds = now.getSeconds();
+        switch (this.currentClockType) {
+          case 'digital':
+            document.getElementById('digital-clock').textContent =
+              `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            break;
+          case 'analog':
+            this.updateAnalogClock(hours, minutes, seconds);
+            break;
+          case 'binary':
+            this.updateBinaryClock(hours, minutes, seconds);
+            break;
+          case 'hex':
+            this.updateHexClock(hours, minutes, seconds);
+            break;
+          case 'roman':
+            this.updateRomanClock(hours, minutes, seconds);
+            break;
+          case 'word':
+            this.updateWordClock(hours, minutes);
+            break;
+          case 'flip':
+            this.updateFlipClock(hours, minutes, seconds);
+            break;
+        }
+        // Update date (common for all clock types)
+        document.getElementById('primary-date').textContent = this.formatDate(now);
+      }
+      updateTimezoneTimes(now) {
+        this.timezones.forEach(tz => {
+          const tzTime = this.getTimeInTimezone(now, tz.offset);
+          const timeElement = document.getElementById(`time-${tz.name.replace(/\s+/g, '-').toLowerCase()}`);
+          if (timeElement) {
+            timeElement.textContent = this.formatTime(tzTime);
+          }
+        });
+      }
+      updateAnalogClock(hours, minutes, seconds) {
+        const hourAngle = (hours % 12) * 30 + minutes * 0.5;
+        const minuteAngle = minutes * 6;
+        const secondAngle = seconds * 6;
+        document.querySelector('.analog-hour').style.transform = `rotate(${hourAngle}deg)`;
+        document.querySelector('.analog-minute').style.transform = `rotate(${minuteAngle}deg)`;
+        document.querySelector('.analog-second').style.transform = `rotate(${secondAngle}deg)`;
+      }
+      setupBinaryClock() {
+        const binaryClock = document.getElementById('binary-clock');
+        binaryClock.innerHTML = '';
+        // Create columns for hours, minutes, seconds
+        for (let i = 0; i < 3; i++) {
+          const column = document.createElement('div');
+          column.className = 'binary-column';
+          // Create 6 cells for each column (for 2-digit numbers up to 59)
+          for (let j = 5; j >= 0; j--) {
+            const cell = document.createElement('div');
+            cell.className = 'binary-cell';
+            cell.setAttribute('data-value', Math.pow(2, j));
+            column.appendChild(cell);
+          }
+          binaryClock.appendChild(column);
+        }
+        // Add labels
+        const labels = document.createElement('div');
+        labels.className = 'binary-labels';
+        labels.innerHTML = '<div class="binary-label">H</div><div class="binary-label">M</div><div class="binary-label">S</div>';
+        binaryClock.appendChild(labels);
+      }
+      updateBinaryClock(hours, minutes, seconds) {
+        const timeValues = [hours, minutes, seconds];
+        const columns = document.querySelectorAll('.binary-column');
+        columns.forEach((column, colIndex) => {
+          const value = timeValues[colIndex];
+          const binaryString = value.toString(2).padStart(6, '0');
+          const cells = column.querySelectorAll('.binary-cell');
+          cells.forEach((cell, cellIndex) => {
+            if (binaryString[cellIndex] === '1') {
+              cell.classList.add('active');
+            } else {
+              cell.classList.remove('active');
+            }
+          });
+        });
+      }
+      updateHexClock(hours, minutes, seconds) {
+        const hexHours = hours.toString(16).toUpperCase().padStart(2, '0');
+        const hexMinutes = minutes.toString(16).toUpperCase().padStart(2, '0');
+        const hexSeconds = seconds.toString(16).toUpperCase().padStart(2, '0');
+        document.getElementById('hex-clock').textContent = `${hexHours}:${hexMinutes}:${hexSeconds}`;
+      }
+      updateRomanClock(hours, minutes, seconds) {
+        document.getElementById('roman-hours').textContent = this.toRomanNumerals(hours);
+        document.getElementById('roman-minutes').textContent = this.toRomanNumerals(minutes);
+        document.getElementById('roman-seconds').textContent = this.toRomanNumerals(seconds);
+      }
+      toRomanNumerals(num) {
+        if (num === 0) return 'O'; // Special case for zero
+        const romanNumerals = [{
+            value: 50,
+            numeral: 'L'
+          },
+          {
+            value: 40,
+            numeral: 'XL'
+          },
+          {
+            value: 10,
+            numeral: 'X'
+          },
+          {
+            value: 9,
+            numeral: 'IX'
+          },
+          {
+            value: 5,
+            numeral: 'V'
+          },
+          {
+            value: 4,
+            numeral: 'IV'
+          },
+          {
+            value: 1,
+            numeral: 'I'
+          }
+        ];
+        let result = '';
+        for (const {
+            value,
+            numeral
+          } of romanNumerals) {
+          while (num >= value) {
+            result += numeral;
+            num -= value;
+          }
+        }
+        return result;
+      }
+      setupWordClock() {
+        const wordClock = document.getElementById('word-clock');
+        wordClock.innerHTML = '';
+        for (let i = 0; i < this.wordClockGrid.length; i++) {
+          for (let j = 0; j < this.wordClockGrid[i].length; j++) {
+            const cell = document.createElement('div');
+            cell.className = 'word-cell';
+            cell.textContent = this.wordClockGrid[i][j];
+            cell.setAttribute('data-row', i);
+            cell.setAttribute('data-col', j);
+            wordClock.appendChild(cell);
+          }
+        }
+      }
+      updateWordClock(hours, minutes) {
+        // Reset all cells
+        document.querySelectorAll('.word-cell').forEach(cell => {
+          cell.classList.remove('active');
+        });
+        // Always activate "IT IS"
+        this.activateWordCells([0, 0], [0, 1]); // I T
+        this.activateWordCells([0, 3], [0, 4]); // I S
+        // Round minutes to the nearest 5
+        const roundedMinutes = Math.floor(minutes / 5) * 5;
+        // Handle minutes
+        if (roundedMinutes === 0) {
+          // O'CLOCK
+          this.activateWordCells([9, 6], [9, 10]); // O'CLOCK
+        } else if (roundedMinutes === 5) {
+          this.activateWordCells([1, 7], [1, 9]); // FIVE
+          this.activateWordCells([3, 0], [3, 3]); // PAST
+        } else if (roundedMinutes === 10) {
+          this.activateWordCells([3, 5], [3, 7]); // TEN
+          this.activateWordCells([3, 0], [3, 3]); // PAST
+        } else if (roundedMinutes === 15) {
+          this.activateWordCells([1, 2], [1, 8]); // QUARTER
+          this.activateWordCells([3, 0], [3, 3]); // PAST
+        } else if (roundedMinutes === 20) {
+          this.activateWordCells([2, 0], [2, 5]); // TWENTY
+          this.activateWordCells([3, 0], [3, 3]); // PAST
+        } else if (roundedMinutes === 25) {
+          this.activateWordCells([2, 0], [2, 5]); // TWENTY
+          this.activateWordCells([1, 7], [1, 9]); // FIVE
+          this.activateWordCells([3, 0], [3, 3]); // PAST
+        } else if (roundedMinutes === 30) {
+          this.activateWordCells([3, 0], [3, 3]); // HALF
+          this.activateWordCells([3, 0], [3, 3]); // PAST
+        } else if (roundedMinutes === 35) {
+          this.activateWordCells([2, 0], [2, 5]); // TWENTY
+          this.activateWordCells([1, 7], [1, 9]); // FIVE
+          this.activateWordCells([3, 9], [3, 10]); // TO
+        } else if (roundedMinutes === 40) {
+          this.activateWordCells([2, 0], [2, 5]); // TWENTY
+          this.activateWordCells([3, 9], [3, 10]); // TO
+        } else if (roundedMinutes === 45) {
+          this.activateWordCells([1, 2], [1, 8]); // QUARTER
+          this.activateWordCells([3, 9], [3, 10]); // TO
+        } else if (roundedMinutes === 50) {
+          this.activateWordCells([3, 5], [3, 7]); // TEN
+          this.activateWordCells([3, 9], [3, 10]); // TO
+        } else if (roundedMinutes === 55) {
+          this.activateWordCells([1, 7], [1, 9]); // FIVE
+          this.activateWordCells([3, 9], [3, 10]); // TO
+        }
+        // Adjust hours for "TO" times
+        let displayHour = hours;
+        if (roundedMinutes > 30) {
+          displayHour = (hours + 1) % 12;
+        }
+        // Convert to 12-hour format
+        displayHour = displayHour % 12 || 12;
+        // Handle hours
+        if (displayHour === 1) {
+          this.activateWordCells([5, 0], [5, 2]); // ONE
+        } else if (displayHour === 2) {
+          this.activateWordCells([6, 8], [6, 10]); // TWO
+        } else if (displayHour === 3) {
+          this.activateWordCells([5, 6], [5, 10]); // THREE
+        } else if (displayHour === 4) {
+          this.activateWordCells([6, 0], [6, 3]); // FOUR
+        } else if (displayHour === 5) {
+          this.activateWordCells([6, 4], [6, 7]); // FIVE
+        } else if (displayHour === 6) {
+          this.activateWordCells([5, 3], [5, 5]); // SIX
+        } else if (displayHour === 7) {
+          this.activateWordCells([8, 0], [8, 4]); // SEVEN
+        } else if (displayHour === 8) {
+          this.activateWordCells([7, 0], [7, 4]); // EIGHT
+        } else if (displayHour === 9) {
+          this.activateWordCells([4, 5], [4, 8]); // NINE
+        } else if (displayHour === 10) {
+          this.activateWordCells([8, 8], [8, 10]); // TEN
+        } else if (displayHour === 11) {
+          this.activateWordCells([7, 5], [7, 10]); // ELEVEN
+        } else if (displayHour === 12) {
+          this.activateWordCells([8, 5], [8, 10]); // TWELVE
+        }
+        // AM/PM
+        if (hours < 12) {
+          this.activateWordCells([0, 6], [0, 7]); // AM
+        } else {
+          this.activateWordCells([0, 9], [0, 10]); // PM
+        }
+      }
+      activateWordCells(start, end) {
+        const [startRow, startCol] = start;
+        const [endRow, endCol] = end;
+        for (let i = startRow; i <= endRow; i++) {
+          for (let j = startCol; j <= endCol; j++) {
+            const cell = document.querySelector(`.word-cell[data-row="${i}"][data-col="${j}"]`);
+            if (cell) {
+              cell.classList.add('active');
+            }
+          }
+        }
+      }
+      setupFlipClock() {
+        const flipClock = document.getElementById('flip-clock');
+        flipClock.innerHTML = '';
+        // Create flip units for hours, minutes, seconds
+        for (let i = 0; i < 6; i++) {
+          const unit = document.createElement('div');
+          unit.className = 'flip-unit';
+          const card = document.createElement('div');
+          card.className = 'flip-card';
+          const front = document.createElement('div');
+          front.className = 'flip-card-front';
+          front.textContent = '0';
+          const back = document.createElement('div');
+          back.className = 'flip-card-back';
+          back.textContent = '0';
+          card.appendChild(front);
+          card.appendChild(back);
+          unit.appendChild(card);
+          flipClock.appendChild(unit);
+          // Add separators after hours and minutes
+          if (i === 1 || i === 3) {
+            const separator = document.createElement('div');
+            separator.className = 'flip-separator';
+            separator.textContent = ':';
+            flipClock.appendChild(separator);
+          }
+        }
+      }
+      updateFlipClock(hours, minutes, seconds) {
+        const timeString =
+          hours.toString().padStart(2, '0') +
+          minutes.toString().padStart(2, '0') +
+          seconds.toString().padStart(2, '0');
+        const flipUnits = document.querySelectorAll('.flip-unit');
+        for (let i = 0; i < 6; i++) {
+          const currentDigit = timeString[i];
+          const flipCard = flipUnits[i].querySelector('.flip-card');
+          const front = flipCard.querySelector('.flip-card-front');
+          const back = flipCard.querySelector('.flip-card-back');
+          if (front.textContent !== currentDigit) {
+            front.textContent = currentDigit;
+            back.textContent = currentDigit;
+            flipCard.style.transform = 'rotateX(180deg)';
+            // Reset animation after it completes
+            setTimeout(() => {
+              flipCard.style.transform = 'rotateX(0deg)';
+            }, 500);
+          }
+        }
+      }
+      formatTime(date) {
+        return date.toLocaleTimeString('en-US', {
+          hour12: false
+        });
+      }
+      formatDate(date) {
+        return date.toDateString();
+      }
+      getTimeInTimezone(date, offset) {
+        const utc = date.getTime() + (date.getTimezoneOffset() * 60000);
+        return new Date(utc + (3600000 * offset));
+      }
+      updateBlockchainHashes(date) {
+        const timeString = date.toISOString();
+        document.getElementById('primary-hash').textContent =
+          "Hash: " + CryptoJS.SHA256(timeString).toString(CryptoJS.enc.Hex).substring(0, 16) + "...";
+        document.getElementById('hash-sha256').textContent =
+          "SHA-256: " + CryptoJS.SHA256(timeString).toString(CryptoJS.enc.Hex);
+        document.getElementById('hash-sha3').textContent =
+          "SHA3-256: " + CryptoJS.SHA3(timeString, {
+            outputLength: 256
+          }).toString(CryptoJS.enc.Hex);
+        document.getElementById('hash-md5').textContent =
+          "MD5: " + CryptoJS.MD5(timeString).toString(CryptoJS.enc.Hex);
+        document.getElementById('hash-ripemd').textContent =
+          "RIPEMD-160: " + CryptoJS.RIPEMD160(timeString).toString(CryptoJS.enc.Hex);
+      }
+      // Timestamp Hashing System
+      initializeTimestampHashing() {
+        const now = new Date();
+        const timestamp = now.getTime();
+        const hash = CryptoJS.SHA256(timestamp.toString()).toString();
+        this.timestampHashes.push({
+          timestamp: timestamp,
+          hash: hash,
+          displayTime: now.toISOString()
+        });
+        this.updateTimestampDisplay();
+      }
+      updateTimestampHashing(now) {
+        // Only add a new hash every 5 seconds to prevent spam
+        const lastHash = this.timestampHashes[this.timestampHashes.length - 1];
+        if (lastHash && now.getTime() - lastHash.timestamp < 5000) {
+          return;
+        }
+        const timestamp = now.getTime();
+        const previousHash = lastHash ? lastHash.hash : '0';
+        const hash = CryptoJS.SHA256(timestamp.toString() + previousHash).toString();
+        this.timestampHashes.push({
+          timestamp: timestamp,
+          hash: hash,
+          displayTime: now.toISOString(),
+          previousHash: previousHash
+        });
+        // Keep only the last N hashes
+        if (this.timestampHashes.length > this.maxHashChainLength) {
+          this.timestampHashes.shift();
+        }
+        this.updateTimestampDisplay();
+      }
+      updateTimestampDisplay() {
+        const current = this.timestampHashes[this.timestampHashes.length - 1];
+        const previous = this.timestampHashes[this.timestampHashes.length - 2];
+        if (current) {
+          document.getElementById('current-timestamp').textContent =
+            `Current: ${current.displayTime} | ${current.hash.substring(0, 16)}...`;
+        }
+        if (previous) {
+          document.getElementById('previous-timestamp').textContent =
+            `Previous: ${previous.displayTime} | ${previous.hash.substring(0, 16)}...`;
+        }
+        // Update hash chain
+        const hashChain = document.getElementById('hash-chain');
+        hashChain.innerHTML = '';
+        this.timestampHashes.slice().reverse().forEach((hashObj, index) => {
+          const hashItem = document.createElement('div');
+          hashItem.className = 'timestamp-hash';
+          hashItem.textContent =
+            `#${this.timestampHashes.length - index}: ${hashObj.displayTime} | ${hashObj.hash.substring(0, 16)}...`;
+          hashChain.appendChild(hashItem);
+        });
+      }
+      generateInitialBlock() {
+        const genesisBlock = {
+          index: 0,
+          timestamp: new Date().toISOString(),
+          data: "Genesis Time Block",
+          previousHash: "0",
+          hash: this.calculateBlockHash(0, new Date().toISOString(), "Genesis Time Block", "0")
+        };
+        this.timeBlocks.push(genesisBlock);
+      }
+      calculateBlockHash(index, timestamp, data, previousHash) {
+        return CryptoJS.SHA256(index + timestamp + data + previousHash).toString();
+      }
+      setupEventListeners() {
+        // Alarm functionality
+        document.getElementById('set-alarm').addEventListener('click', () => {
+          this.setAlarm();
+        });
+        // Timer functionality
+        document.getElementById('start-timer').addEventListener('click', () => {
+          this.startTimer();
+        });
+        document.getElementById('pause-timer').addEventListener('click', () => {
+          this.pauseTimer();
+        });
+        document.getElementById('reset-timer').addEventListener('click', () => {
+          this.resetTimer();
+        });
+        // WebXR functionality
+        document.getElementById('enter-xr').addEventListener('click', () => {
+          this.enterXR();
+        });
+      }
+      setAlarm() {
+        const alarmTimeInput = document.getElementById('alarm-time').value;
+        if (!alarmTimeInput) return;
+        const [hours, minutes] = alarmTimeInput.split(':');
+        const alarmDate = new Date();
+        alarmDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+        // If the alarm time is earlier than now, set it for tomorrow
+        if (alarmDate < new Date()) {
+          alarmDate.setDate(alarmDate.getDate() + 1);
+        }
+        const alarm = {
+          time: alarmDate,
+          active: true,
+          id: Date.now()
+        };
+        this.alarms.push(alarm);
+        this.updateAlarmList();
+      }
+      updateAlarmList() {
+        const alarmList = document.getElementById('alarm-list');
+        alarmList.innerHTML = '';
+        this.alarms.forEach(alarm => {
+          const alarmItem = document.createElement('div');
+          alarmItem.className = 'alarm-item';
+          const timeString = alarm.time.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          const statusClass = alarm.active ? 'alarm-active' : 'alarm-inactive';
+          const statusText = alarm.active ? 'Active' : 'Inactive';
+          alarmItem.innerHTML = `
+                        <span>${timeString}</span>
+                        <span class="${statusClass}">${statusText}</span>
+                        <button data-id="${alarm.id}" class="delete-alarm">Delete</button>
+                    `;
+          alarmList.appendChild(alarmItem);
+        });
+        // Add event listeners to delete buttons
+        document.querySelectorAll('.delete-alarm').forEach(button => {
+          button.addEventListener('click', (e) => {
+            const id = parseInt(e.target.getAttribute('data-id'));
+            this.deleteAlarm(id);
+          });
+        });
+      }
+      deleteAlarm(id) {
+        this.alarms = this.alarms.filter(alarm => alarm.id !== id);
+        this.updateAlarmList();
+      }
+      checkAlarms(now) {
+        this.alarms.forEach(alarm => {
+          if (alarm.active && alarm.time <= now && alarm.time > new Date(now.getTime() - 1000)) {
+            alert(`Alarm! It's ${alarm.time.toLocaleTimeString()}`);
+            alarm.active = false;
+            this.updateAlarmList();
+          }
+        });
+      }
+      startTimer() {
+        const minutes = parseInt(document.getElementById('timer-minutes').value) || 0;
+        const seconds = parseInt(document.getElementById('timer-seconds').value) || 0;
+        this.timerValue = minutes * 60 + seconds;
+        this.timerPaused = false;
+        if (this.timerValue > 0) {
+          this.updateTimerDisplay();
+        }
+      }
+      pauseTimer() {
+        this.timerPaused = !this.timerPaused;
+      }
+      resetTimer() {
+        this.timerPaused = true;
+        this.timerValue = 0;
+        this.updateTimerDisplay();
+      }
+      updateTimer() {
+        if (this.timerValue > 0) {
+          this.timerValue--;
+          this.updateTimerDisplay();
+          if (this.timerValue === 0) {
+            alert("Timer finished!");
+            this.timerPaused = true;
+          }
+        }
+      }
+      updateTimerDisplay() {
+        const minutes = Math.floor(this.timerValue / 60);
+        const seconds = this.timerValue % 60;
+        document.getElementById('timer-display').textContent =
+          `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      }
+      updateHolidayCountdowns(now) {
+        const holidayList = document.getElementById('holiday-list');
+        holidayList.innerHTML = '';
+        this.holidays.forEach(holiday => {
+          // Calculate next occurrence of this holiday
+          let nextDate = new Date(now.getFullYear(), holiday.month, holiday.day);
+          if (nextDate < now) {
+            nextDate.setFullYear(nextDate.getFullYear() + 1);
+          }
+          const timeDiff = nextDate.getTime() - now.getTime();
+          const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+          const holidayItem = document.createElement('div');
+          holidayItem.className = 'holiday-item';
+          holidayItem.innerHTML = `
+                        <span>${holiday.name}</span>
+                        <span class="countdown">${daysDiff} days</span>
+                    `;
+          holidayList.appendChild(holidayItem);
+        });
+      }
+      enterXR() {
+        const xrSection = document.getElementById('xr-scene');
+        xrSection.style.display = 'block';
+        // Add blockchain nodes to XR scene
+        const blockchainNodes = document.getElementById('blockchain-nodes');
+        blockchainNodes.innerHTML = '';
+        for (let i = 0; i < 8; i++) {
+          const angle = (i / 8) * Math.PI * 2;
+          const x = Math.cos(angle) * 3;
+          const z = Math.sin(angle) * 3;
+          const node = document.createElement('a-entity');
+          node.setAttribute('geometry', 'primitive: box; width: 0.3; height: 0.3; depth: 0.3');
+          node.setAttribute('position', `${x} 1.5 ${z}`);
+          node.setAttribute('material', 'color: #00ffff');
+          node.setAttribute('animation', `property: rotation; to: 0 ${360 * (i % 2 ? 1 : -1)} 0; loop: true; dur: ${5000 + i * 1000}`);
+          blockchainNodes.appendChild(node);
+        }
+        document.getElementById('enter-xr').textContent = 'Exit WebXR';
+        document.getElementById('enter-xr').removeEventListener('click', this.enterXR);
+        document.getElementById('enter-xr').addEventListener('click', () => {
+          this.exitXR();
+        });
+      }
+      exitXR() {
+        const xrSection = document.getElementById('xr-scene');
+        xrSection.style.display = 'none';
+        document.getElementById('enter-xr').textContent = 'Enter WebXR Environment';
+        document.getElementById('enter-xr').removeEventListener('click', this.exitXR);
+        document.getElementById('enter-xr').addEventListener('click', () => {
+          this.enterXR();
+        });
+      }
+    }
+    // Helper functions for holiday calculations
+    function calculateEaster(year) {
+      // Simplified calculation for Easter (Western Christian)
+      const a = year % 19;
+      const b = Math.floor(year / 100);
+      const c = year % 100;
+      const d = Math.floor(b / 4);
+      const e = b % 4;
+      const f = Math.floor((b + 8) / 25);
+      const g = Math.floor((b - f + 1) / 3);
+      const h = (19 * a + b - d - g + 15) % 30;
+      const i = Math.floor(c / 4);
+      const k = c % 4;
+      const l = (32 + 2 * e + 2 * i - h - k) % 7;
+      const m = Math.floor((a + 11 * h + 22 * l) / 451);
+      const month = Math.floor((h + l - 7 * m + 114) / 31);
+      const day = ((h + l - 7 * m + 114) % 31) + 1;
+      return new Date(year, month - 1, day).getDate();
+    }
+
+    function getThanksgivingDate(year) {
+      // Thanksgiving is the 4th Thursday of November
+      const novemberFirst = new Date(year, 10, 1);
+      const dayOfWeek = novemberFirst.getDay();
+      // Calculate how many days to add to get to the 4th Thursday
+      const daysToAdd = (4 - dayOfWeek + 7) % 7 + 21;
+      return daysToAdd;
+    }
+    // Initialize the application
+    document.addEventListener('DOMContentLoaded', () => {
+      const chronoBlock = new ChronoBlock();
+    });
+  </script>
+</body>
+
+</html>
